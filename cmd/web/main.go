@@ -28,8 +28,7 @@ func main() {
 		errorLog.Fatal(err)
 	}
 	defer db.Close()
-	// Initialize a models.SnippetModel instance and add it to the application
-	// dependencies.
+
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
@@ -45,7 +44,6 @@ func main() {
 	errorLog.Fatal(err)
 }
 
-// for a given DSN.
 func openDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {

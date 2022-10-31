@@ -25,6 +25,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	params := httprouter.ParamsFromContext(r.Context())
+
 	id, err := strconv.Atoi(params.ByName("id"))
 	if err != nil || id < 1 {
 		app.notFound(w)
@@ -43,7 +44,9 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 
 	data := app.newTemplateData(r)
 	data.Snippet = snippet
+
 	app.render(w, http.StatusOK, "view.tmpl.html", data)
+
 }
 
 type snippetCreateForm struct {
@@ -55,10 +58,6 @@ type snippetCreateForm struct {
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	data := app.newTemplateData(r)
-	// Initialize a new createSnippetForm instance and pass it to the template.
-	// Notice how this is also a great opportunity to set any default or
-	// 'initial' values for the form --- here we set the initial value for the
-	// snippet expiry to 365 days.
 	data.Form = snippetCreateForm{
 		Expires: 365,
 	}
@@ -87,5 +86,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		app.serverError(w, err)
 		return
 	}
+
+	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }

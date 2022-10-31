@@ -1,8 +1,10 @@
 package models
 
 import (
-	"database/sql"
+	"context"
 	"errors"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"time"
 )
 
@@ -15,25 +17,18 @@ type Snippet struct {
 }
 
 type SnippetModel struct {
-	DB *sql.DB
+	DB *pgxpool.Pool
 }
 
 func (m *SnippetModel) Insert(title string, content string, expires int) (int, error) {
-	var stmt string
+	timeExp := time.Now().AddDate(0, 0, expires)
 
-	if expires == 1 {
-		stmt = `INSERT INTO snippets (title, content, created, expires)
-		VALUES($1, $2, now(), now() + interval '1' day) RETURNING id`
-	} else if expires == 7 {
-		stmt = `INSERT INTO snippets (title, content, created, expires)
-		VALUES($1, $2, now(), now() + interval '7' day) RETURNING id`
-	} else if expires == 365 {
-		stmt = `INSERT INTO snippets (title, content, created, expires)
-		VALUES($1, $2, now(), now() + interval '365' day) RETURNING id`
-	}
+	stmt := `INSERT INTO snippets (title, content, created, expires)
+		VALUES($1, $2, now(), $3) RETURNING id`
 
 	var id int
-	err := m.DB.QueryRow(stmt, title, content).Scan(&id)
+	//err := m.DB.QueryRow(stmt, title, content, timeExp).Scan(&id)
+	err := m.DB.QueryRow(context.Background(), stmt, title, content, timeExp).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
@@ -46,13 +41,13 @@ func (m *SnippetModel) Get(id int) (*Snippet, error) {
 	stmt := `SELECT id, title, content, created, expires FROM snippets
 WHERE expires > now() AND id = $1`
 
-	row := m.DB.QueryRow(stmt, id)
+	row := m.DB.QueryRow(context.Background(), stmt, id)
 	s := &Snippet{}
 
 	err := row.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires)
 	if err != nil {
 
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNoRecord
 		} else {
 			return nil, err
@@ -65,7 +60,7 @@ func (m *SnippetModel) Latest() ([]*Snippet, error) {
 	stmt := `SELECT id, title, content, created, expires FROM snippets
 WHERE expires > now() ORDER BY id DESC LIMIT 10`
 
-	rows, err := m.DB.Query(stmt)
+	rows, err := m.DB.Query(context.Background(), stmt)
 	if err != nil {
 		return nil, err
 	}

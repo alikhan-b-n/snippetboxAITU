@@ -1,23 +1,28 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"flag"
+	"github.com/alexedwards/scs/pgxstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-playground/form/v4"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v4/pgxpool"
+
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"snippetbox.aitu.kz/internal/models"
+	"time"
 )
 
 type application struct {
-	errorLog      *log.Logger
-	infoLog       *log.Logger
-	snippets      *models.SnippetModel
-	templateCache map[string]*template.Template
-	formDecoder   *form.Decoder
+	errorLog       *log.Logger
+	infoLog        *log.Logger
+	snippets       *models.SnippetModel
+	templateCache  map[string]*template.Template
+	formDecoder    *form.Decoder
+	sessionManager *scs.SessionManager
 }
 
 func main() {
@@ -27,13 +32,14 @@ func main() {
 
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
-	db, err := openDB(*dsn)
+
+	pool, err := pgxpool.Connect(context.Background(), *dsn)
 
 	if err != nil {
 		errorLog.Fatal(err)
 	}
 
-	defer db.Close()
+	defer pool.Close()
 
 	templateCache, err := newTemplateCache()
 
@@ -43,12 +49,17 @@ func main() {
 
 	formDecoder := form.NewDecoder()
 
+	sessionManager := scs.New()
+	sessionManager.Store = pgxstore.New(pool)
+	sessionManager.Lifetime = 12 * time.Hour
+
 	app := &application{
-		errorLog:      errorLog,
-		infoLog:       infoLog,
-		snippets:      &models.SnippetModel{DB: db},
-		templateCache: templateCache,
-		formDecoder:   formDecoder,
+		errorLog:       errorLog,
+		infoLog:        infoLog,
+		snippets:       &models.SnippetModel{DB: pool},
+		templateCache:  templateCache,
+		formDecoder:    formDecoder,
+		sessionManager: sessionManager,
 	}
 
 	srv := &http.Server{
@@ -60,15 +71,4 @@ func main() {
 	infoLog.Printf("Starting server on %s", *addr)
 	err = srv.ListenAndServe()
 	errorLog.Fatal(err)
-}
-
-func openDB(dsn string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return nil, err
-	}
-	if err = db.Ping(); err != nil {
-		return nil, err
-	}
-	return db, nil
 }

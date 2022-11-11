@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"path"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -61,4 +62,12 @@ func MinChars(value string, n int) bool {
 
 func Matches(value string, rx *regexp.Regexp) bool {
 	return rx.MatchString(value)
+}
+
+func FileType(value string) bool {
+	ext := strings.ToLower(path.Ext(value))
+	if ext != ".jpg" && ext != ".png" {
+		return false
+	}
+	return true
 }

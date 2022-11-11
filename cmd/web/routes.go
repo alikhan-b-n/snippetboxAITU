@@ -12,8 +12,9 @@ func (app *application) routes() http.Handler {
 		app.notFound(w)
 	})
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
+	imageServer := http.FileServer(http.Dir("./images/"))
+	router.Handler(http.MethodGet, "/images/*filepath", http.StripPrefix("/images", imageServer))
 	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
-	// Use the nosurf middleware on all our 'dynamic' routes.
 	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf)
 	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
 	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.snippetView))

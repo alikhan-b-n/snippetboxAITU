@@ -9,26 +9,28 @@ import (
 )
 
 type Snippet struct {
-	ID      int
-	Title   string
-	Content string
-	Created time.Time
-	Expires time.Time
+	ID         int
+	Title      string
+	Content    string
+	Images     string
+	Created    time.Time
+	Expires    time.Time
+	DataImages []string
 }
 
 type SnippetModel struct {
 	DB *pgxpool.Pool
 }
 
-func (m *SnippetModel) Insert(title string, content string, expires int) (int, error) {
+func (m *SnippetModel) Insert(title string, content string, expires int, filesNames string) (int, error) {
 	timeExp := time.Now().AddDate(0, 0, expires)
 
-	stmt := `INSERT INTO snippets (title, content, created, expires)
-		VALUES($1, $2, now(), $3) RETURNING id`
+	stmt := `INSERT INTO snippets (title, content, created, expires, images)
+		VALUES($1, $2, now(), $3, $4) RETURNING id`
 
 	var id int
 	//err := m.DB.QueryRow(stmt, title, content, timeExp).Scan(&id)
-	err := m.DB.QueryRow(context.Background(), stmt, title, content, timeExp).Scan(&id)
+	err := m.DB.QueryRow(context.Background(), stmt, title, content, timeExp, filesNames).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
@@ -38,13 +40,13 @@ func (m *SnippetModel) Insert(title string, content string, expires int) (int, e
 
 func (m *SnippetModel) Get(id int) (*Snippet, error) {
 
-	stmt := `SELECT id, title, content, created, expires FROM snippets
+	stmt := `SELECT id, title, content, created, expires, images FROM snippets
 WHERE expires > now() AND id = $1`
 
 	row := m.DB.QueryRow(context.Background(), stmt, id)
 	s := &Snippet{}
 
-	err := row.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires)
+	err := row.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires, &s.Images)
 	if err != nil {
 
 		if errors.Is(err, pgx.ErrNoRows) {

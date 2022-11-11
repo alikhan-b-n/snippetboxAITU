@@ -7,6 +7,17 @@
                 <span>#{{.ID}}</span>
             </div>
             <pre><code>{{.Content}}</code></pre>
+
+            {{if .DataImages }}
+
+                {{range .DataImages}}
+            <div class="">
+                <div></div>
+              <img src="{{.}}">
+            </div>
+                {{end}}
+
+            {{end}}
             <div class='metadata'>
                 <time>Created: {{humanDate .Created}}</time>
                 <time>Expires: {{humanDate .Expires}}</time>

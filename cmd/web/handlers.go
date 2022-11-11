@@ -4,10 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"snippetbox.aitu.kz/internal/models"
 	"snippetbox.aitu.kz/internal/validator"
 	"strconv"
+	"strings"
+	"time"
 )
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +25,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 	data := app.newTemplateData(r)
 	data.Snippets = snippets
+	fmt.Println(snippets)
 	app.render(w, http.StatusOK, "home.tmpl.html", data)
 }
 
@@ -42,9 +48,19 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	snippet.DataImages = strings.Split(snippet.Images, " ")
+	for i, _ := range snippet.DataImages {
+		snippet.DataImages[i] = strings.Replace(snippet.DataImages[i], " ", "", -1)
+		snippet.DataImages[i] = strings.Replace(snippet.DataImages[i], ".", "", 1)
+	}
+
+	for _, i2 := range snippet.DataImages {
+		fmt.Println(i2)
+	}
+	snippet.DataImages = snippet.DataImages[:len(snippet.DataImages)-1]
 	data := app.newTemplateData(r)
 	data.Snippet = snippet
-
+	fmt.Println(len(snippet.DataImages))
 	app.render(w, http.StatusOK, "view.tmpl.html", data)
 
 }
@@ -53,6 +69,7 @@ type snippetCreateForm struct {
 	Title               string `form:"title"`
 	Content             string `form:"content"`
 	Expires             int    `form:"expires"`
+	Images              string `form:"images"`
 	validator.Validator `form:"-"`
 }
 
@@ -75,13 +92,82 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
 	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
 	form.CheckField(validator.PermittedInt(form.Expires, 1, 7, 365), "expires", "This field must equal 1, 7 or 365")
+	fmt.Println("----------------------")
+	//fmt.Println(form.)
+	/*	filenames := strings.Split(form.Images, " ")
+		for i, _ := range filenames {
+			filenames[i] = strings.Replace(filenames[i], " ", "", -1)
+			filenames[i] = strings.Replace(filenames[i], ".", "", 1)
+			fmt.Println(filenames[i])
+			form.CheckField(validator.FileType(filenames[i]), "file", "File must be .png or .jpg")
+		}*/
+
 	if !form.Valid() {
 		data := app.newTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "create.tmpl.html", data)
 		return
 	}
-	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
+
+	err = r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	files := r.MultipartForm.File["file"]
+
+	var filesNames string
+	dir := fmt.Sprintf("./images/%s_%d", strings.Replace(form.Title, " ", "_", -1), time.Now().UnixNano())
+	err = os.Mkdir(dir, os.ModePerm)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	for _, fileHeader := range files {
+
+		file, err := fileHeader.Open()
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+
+		defer file.Close()
+
+		buff := make([]byte, 512)
+		_, err = file.Read(buff)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+
+		filename := fmt.Sprintf("%s/%d%s", dir, time.Now().UnixNano(), filepath.Ext(fileHeader.Filename))
+
+		//fmt.Sprintf("/images/%s", form.Title)
+
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+
+		f, err := os.Create(filename)
+		if err != nil {
+			app.serverError(w, err)
+		}
+
+		defer f.Close()
+
+		_, err = io.Copy(f, file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		filesNames = filename + " " + filesNames
+	}
+
+	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires, filesNames)
 	if err != nil {
 		app.serverError(w, err)
 		return

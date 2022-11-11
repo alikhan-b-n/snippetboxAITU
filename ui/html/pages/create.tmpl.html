@@ -1,6 +1,6 @@
 {{define "title"}}Create a New Snippet{{end}}
 {{define "main"}}
-    <form action='/snippet/create' method='POST'>
+    <form enctype="multipart/form-data" action='/snippet/create' method='POST'>
         <!-- Include the CSRF token -->
         <input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
         <div>
@@ -18,6 +18,14 @@
             <textarea name='content'>{{.Form.Content}}</textarea>
         </div>
         <div>
+            <label>Upload Images:</label>
+            {{with .Form.FieldErrors.images}}
+                <label class='error'>{{.}}</label>
+            {{end}}
+                <input type="file" name="file" multiple>
+        </div>
+        <div>
+
             <label>Delete in:</label>
             {{with .Form.FieldErrors.expires}}
                 <label class='error'>{{.}}</label>

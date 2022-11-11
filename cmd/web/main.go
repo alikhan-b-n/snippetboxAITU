@@ -29,7 +29,7 @@ type application struct {
 
 func main() {
 	addr := flag.String("addr", ":4000", "HTTP network address")
-	dsn := flag.String("dsn", "postgres://postgres:123456@localhost:5432/snippetbox", "PGSQL data source name")
+	dsn := flag.String("dsn", "postgres://postgres:123@localhost:5432/snippetbox", "PGSQL data source name")
 	flag.Parse()
 
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
@@ -79,8 +79,8 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 	infoLog.Printf("Starting server on %s", *addr)
-	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
-	//err = srv.ListenAndServe()
+	//err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
+	err = srv.ListenAndServe()
 	errorLog.Fatal(err)
 
 }

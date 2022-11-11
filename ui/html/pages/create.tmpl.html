@@ -1,17 +1,17 @@
-{{define "title"}}Create a New Snippet{{end}}
+{{define "title"}}Create a New News{{end}}
 {{define "main"}}
     <form enctype="multipart/form-data" action='/snippet/create' method='POST'>
         <!-- Include the CSRF token -->
         <input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
         <div>
-            <label>Title:</label>
+            <label>Title of the article:</label>
             {{with .Form.FieldErrors.title}}
                 <label class='error'>{{.}}</label>
             {{end}}
             <input type='text' name='title' value='{{.Form.Title}}'>
         </div>
         <div>
-            <label>Content:</label>
+            <label>Text:</label>
             {{with .Form.FieldErrors.content}}
                 <label class='error'>{{.}}</label>
             {{end}}
@@ -22,7 +22,7 @@
             {{with .Form.FieldErrors.images}}
                 <label class='error'>{{.}}</label>
             {{end}}
-                <input type="file" name="file" multiple>
+                <input type="file" name="file">
         </div>
         <div>
 
@@ -35,7 +35,7 @@
             <input type='radio' name='expires' value='1' {{if (eq .Form.Expires 1)}}checked{{end}}> One Day
         </div>
         <div>
-            <input type='submit' value='Publish snippet'>
+            <input type='submit' value='Publish News'>
         </div>
     </form>
 {{end}}
